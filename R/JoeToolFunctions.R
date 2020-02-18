@@ -85,6 +85,7 @@ report=function(df, Measures, Factor, paired=c("Yes", "No", "Try")){
 
 
   reportpvaluecount=0
+  p=NULL
   for(i in Measures){
     reportpvaluecount=reportpvaluecount+1
     form=paste0(i, "~",Factor)
@@ -100,4 +101,37 @@ report=function(df, Measures, Factor, paired=c("Yes", "No", "Try")){
   output=output%>%
     mutate(Signif=ifelse(p_value<.001, "***",ifelse(p_value<.01, "**",
                                                     ifelse(p_value<.05, "*", ifelse(p_value<.1, ".", "")))))
+}
+
+
+#' Appends Interactions to a \code{\link[JoeTools:report]{report()}} Output Dataframe
+#'
+#' @param report The report dataframe that is being appended
+#' @param df The orginal dataframe used for the report
+#' @param Measures A vector of string names for the dependant variable. Order must be the same as the repor
+#' @param Factor A binary factor (as a string) which will be used for comparisons.  Must be 1 (Treatment) or 0 (No_Treatment)
+#' @param Interaction A factor column name (as a string) that will be used as an interacting independant variable.
+#'
+#' @return
+#' @import tidyverse
+#' @export
+#'
+#' @examples
+appendInteraction=function(report,df, Measures,Factor,Interaction){
+  p=NULL
+  reportpvaluecount=0
+  for(i in Measures){
+    reportpvaluecount=reportpvaluecount+1
+    form=paste0(i, "~",Factor,"*",Interaction)
+    p[reportpvaluecount]=tryCatch(summary(aov(formula = as.formula(form), data=df))[[1]][["Pr(>F)"]][[3]], error=function(err) NA)
+  }
+  name=paste0(Interaction,"_pvalue")
+  name2=paste0(Interaction,"_Int")
+  output=report
+  output[[name]]=p
+  output=output%>%
+    mutate(NewP=ifelse(.data[[name]]<.001, "***",ifelse(.data[[name]]<.01, "**",
+                                                        ifelse(.data[[name]]<.05, "*", ifelse(.data[[name]]<.1, ".", "")))))%>%
+    rename(!!name2:=NewP)
+  
 }

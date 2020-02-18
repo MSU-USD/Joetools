@@ -1,7 +1,7 @@
 Package: JoeTools
 Type: Package
 Title: Loads Frequently Used Functions
-Version: 0.1.0
+Version: 0.1.1
 Author: Joe Jalbert <joejalbert@gmail.com>
 Maintainer: Joe Jalbert <joejalbert@gmail.com>
 Description: Loads frequently used functions for data analysis and reporting.
