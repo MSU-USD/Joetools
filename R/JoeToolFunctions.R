@@ -37,6 +37,7 @@ wbsave=function(df,filename,sheetBy=NULL,keepNames=FALSE){
   if(keepNames==FALSE) {names(df)=str_to_sentence(names(df))}
   if(!is.null(sheetBy)) {sheetBy=str_to_sentence(sheetBy)}
   wb=createWorkbook()
+  df=as.data.frame(df)
   TABLE_COLNAMES_STYLE <- CellStyle(wb)+ Font(wb,  heightInPoints=11, color="#44546A", isBold=TRUE)+
     Border(color = "#8EA9DB", position = "BOTTOM", pen="BORDER_THICK")
   sheetAll=createSheet(wb,sheetName = "All")
@@ -77,7 +78,7 @@ report=function(df, Measures, Factor, paired=c("Yes", "No", "Try")){
     summarise_at(vars(Measures), mean,na.rm=T)%>%
     mutate(Levels =ifelse(.data[[Factor]]==1, "Treatment", "No_Treatment"))%>%
     select(-.data[[Factor]])%>%
-    pivot_longer(cols=Outcomes, names_to = "Measure")%>%
+    pivot_longer(cols=Measures, names_to = "Measure")%>%
     pivot_wider(names_from = "Levels", values_from = "value")%>%
     mutate(Diff=Treatment-No_Treatment)%>%
     mutate(Measure=factor(.data$Measure,levels=Measures))%>%
