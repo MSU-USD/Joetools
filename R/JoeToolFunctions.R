@@ -72,7 +72,7 @@ wbsave=function(df,filename,sheetBy=NULL,keepNames=FALSE){
 #'
 #' @examples
 
-report=function(df, Measures, Factor, paired=c("Yes", "No", "Try")){
+report=function(df, Measures, Factor, paired=c("Try","Yes", "No")){
   output=df%>%
     group_by(.data[[Factor]])%>%
     summarise_at(vars(Measures), mean,na.rm=T)%>%
