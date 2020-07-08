@@ -22,7 +22,7 @@ se=function(data){
 #' @export
 #'
 #' @examples
-simplify <- function(input) {
+simplifyAppend <- function(input) {
   x=match("Signif",colnames(input))+1
   y=as.numeric(ncol(input))
   df=input%>%
@@ -161,7 +161,7 @@ appendInteraction=function(report,df, Measures,Factor,Interaction, Simplify=T){
     output=report%>%
     left_join(anova, by="Measure")
     if(Simplify==T){
-      output=simplify(output)
+      output=simplifyAppend(output)
     }
   } else  {
     warning("Error in ANOVA, No comparison added.")
