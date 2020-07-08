@@ -217,3 +217,188 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
     }
   }
 }
+
+#' Force Flextable to Page
+#'
+#' @param ft Flextable object
+#' @param pgwidth Customizable page width setting
+#'
+#' @return
+#' @import flextable
+#' @export
+#'
+#' @examples
+FitFlextableToPage <- function(ft, pgwidth = 6){
+  
+  ft_out <- ft %>% autofit()
+  
+  ft_out <- width(ft_out, width = dim(ft_out)$widths*pgwidth /(flextable_dim(ft_out)$widths))
+  return(ft_out)
+}
+
+
+
+#' Produce the Pairwise Comparisons found Significant in a Report
+#'
+#' @param Report Report object output from Report/appendInteraction
+#' @param Data The original data used to make Report
+#'
+#' @return
+#' @import tidyverse
+#' @export
+#'
+#' @examples
+pairwise <- function(Report, Data) {
+  Ind=colnames(Report)[match("Diff",colnames(Report))-1]
+  w=match("Measure",colnames(Report))+0
+  x=match("Signif", colnames(Report))+1
+  y=ncol(Report)+0
+  z=w+1
+  CompPrime=Report%>%
+    select(1:w,x:y)%>%
+    pivot_longer(z:ncol(.),names_to = "Factor", values_to = "p_value" )%>%
+    filter(p_value%in%c(".","*","**","***"))%>%
+    mutate(Row=row_number())
+  comps=NULL
+  for (i in 1:nrow(CompPrime)) {
+    a=CompPrime%>%
+      filter(Row==i)%>%
+      select(-p_value, -Row)%>%
+      pivot_longer(1:Factor,names_to = "Settings", values_to = "value")
+    b=as.character(a$value)
+    names(b)=a$Settings
+    # c=Pairwise(data, "Treatment",b["Measure"],b["Factor"], b["Program"],b["Cohort"])
+    c=Data%>%
+      filter(if(b["Cohort"]!="All"){Cohort==b["Cohort"]} else {T})%>%
+      filter(!is.na(!!b["Measure"]))%>%
+      mutate_("Dependant"=b["Measure"], "Independant"=Ind, "Levels"=b["Factor"])%>%
+      group_by(Independant, Levels)%>%
+      summarize(Mean=mean(Dependant, na.rm=T),Count=n(), Measure=b["Measure"], Dep_Values=list(Dependant))%>%
+      filter(Count>4)%>%
+      select(-Count)%>%
+      ungroup()%>%
+      mutate(Independant=ifelse(Independant==1,"Treatment","No_Treatment"))%>%
+      pivot_wider(names_from = Independant, values_from = c("Mean", "Dep_Values"))%>%
+      rename(No_Treatment=Mean_No_Treatment, Treatment=Mean_Treatment)%>%
+      filter(!is.na(No_Treatment)&!is.na(Treatment))%>%
+      mutate(Diff=Treatment-No_Treatment)%>%
+      group_by(Levels)%>%
+      mutate(p_value=tryCatch({t.test(unlist(Dep_Values_No_Treatment), unlist(Dep_Values_Treatment))$p.value},
+                              error=function(e) {NA}))%>%
+      select(-Dep_Values_No_Treatment,-Dep_Values_Treatment)%>%
+      mutate(Signif=ifelse(p_value<.001, "***",ifelse(p_value<.01, "**",
+                                                      ifelse(p_value<.05, "*", ifelse(p_value<.1, ".", "")))))%>%
+      mutate(Factor=b["Factor"], Cohort=b["Cohort"])
+    comps[[i]]=c
+  }
+  comps=bind_rows(comps)%>%
+    relocate(Cohort, Factor)%>%
+    group_by(Cohort, Factor, Measure)%>%
+    filter(min(p_value)<.05)%>%
+    filter(max(row_number())>1)%>%
+    ungroup()%>%
+    mutate(Levels=str_replace_all(Levels, ":", " "),
+           Factor=str_replace_all(Factor, ":"," X "))
+  names(comps)[names(comps)=="Treatment"] <- Ind
+  names(comps)[names(comps)=="No_Treatment"] <- "Matched_Cohort"
+  comps
+}
+
+
+#' Creates a document including the Report and Pairwise comparisons produced above
+#'
+#' @param Report The report output by report/appendInteraction
+#' @param Pairwise The output of the pairwise function created from Report
+#' @param measureNames A named vector with cleaned names for Measures
+#' @param factorNames A named vector with cleaned names for Factors
+#' @param percentOutcomes A vector of Outcomes that should be percentages
+#'
+#' @return
+#' @import tidyverse
+#' @import officer
+#' @import flextable
+#' @export
+#'
+#' @examples
+document <- function(Report, Pairwise, measureNames, factorNames, percentOutcomes) {
+  x=match("Measure", colnames(Report))+1
+  y=x+2
+  z=x+4
+  Report=Report%>%
+    rename_with(~str_replace_all(.,"_"," "))
+  Main=Report%>%
+    filter(Cohort=="All")%>%
+    mutate(across(x:y,~ifelse(Measure%in%percentOutcomes,percent(., accuracy=.1), round(.,3))))%>%
+    mutate(Diff=ifelse(Diff>0, paste0("+",Diff), Diff))%>%
+    mutate(Measure=fct_recode(Measure, !!!measureNames))%>%
+    select(1:z, -`p value`, -Cohort, -Program)%>%
+    flextable()%>%
+    theme_vanilla()%>%
+    bold(j=~Diff)%>%
+    color(j=~Diff, color="Black")%>%
+    color(~str_detect(Diff,"\\+"), ~Diff,color="#7C997C" )%>%
+    color(~Signif%in%c(".","*","**", "***")&str_detect(Diff,"\\+"), ~Diff, color="#0db14b")%>%
+    color(~str_detect(Diff,"-"), ~Diff,color="#93736C")%>%
+    color(~Signif%in%c(".","*","**", "***")&str_detect(Diff,"-"), ~Diff, color="Red")%>%
+    void(~Signif, part='all')%>%
+    FitFlextableToPage()
+  
+  Cohorts=Report%>%
+    filter(Cohort!="All")%>%
+    mutate(across(x:y,~ifelse(Measure%in%percentOutcomes,percent(., accuracy=.1), round(.,3))))%>%
+    mutate(Diff=ifelse(Diff==0,Diff,ifelse(Diff>0, paste0("+",Diff),Diff)))%>%
+    mutate(Measure=fct_recode(Measure, !!!measureNames))%>%
+    select(1:z, -`p value`, -Program)%>%
+    flextable()%>%
+    merge_v(j=~Cohort)%>%
+    theme_vanilla()%>%
+    bold(j=~Diff)%>%
+    color(j=~Diff, color="Black")%>%
+    color(~str_detect(Diff,"\\+"), ~Diff,color="#7C997C" )%>%
+    color(~Signif%in%c(".","*","**", "***")&str_detect(Diff,"\\+"), ~Diff, color="#0db14b")%>%
+    color(~str_detect(Diff,"-"), ~Diff,color="#93736C")%>%
+    color(~Signif%in%c(".","*","**", "***")&str_detect(Diff,"-"), ~Diff, color="Red")%>%
+    void(~Signif, part='all')%>%
+    FitFlextableToPage()
+  
+  doc=read_docx()%>%
+    body_add_flextable(Main)%>%
+    body_add_par("Break")%>%
+    body_add_flextable(Cohorts)
+  
+  for (k in levels(as.factor(Pairwise$Factor))) {
+    Pairwise_Report=NULL
+    x=match("Measure", colnames(Pairwise))+1
+    y=x+2
+    z=x+4
+    Pairwise_Report=Pairwise%>%
+      rename_with(~str_replace_all(.,"_"," "))%>%
+      mutate(across(x:y,~ifelse(Measure%in%percentOutcomes,percent(., accuracy=.1), round(.,3))))%>%
+      mutate(Diff=ifelse(Diff>0, paste0("+",Diff), Diff))%>%
+      mutate(Measure=fct_recode(Measure, !!!measureNames))%>%
+      filter(Factor==k)%>%
+      select(-Factor, -`p value`)%>%
+      rename(!!k:=Levels)%>%
+      arrange(Cohort, Measure)%>%
+      relocate(Cohort, Measure)%>%
+      flextable()%>%
+      merge_v(j=~Cohort)%>%
+      merge_v(j=~Measure)%>%
+      theme_vanilla()%>%
+      bold(j=~Diff)%>%
+      color(j=~Diff, color="Black")%>%
+      color(~str_detect(Diff,"\\+"), ~Diff,color="#7C997C" )%>%
+      color(~Signif%in%c(".","*","**", "***")&str_detect(Diff,"\\+"), ~Diff, color="#0db14b")%>%
+      color(~str_detect(Diff,"-"), ~Diff,color="#93736C")%>%
+      color(~Signif%in%c(".","*","**", "***")&str_detect(Diff,"-"), ~Diff, color="Red")%>%
+      void(~Signif, part='all')%>%
+      FitFlextableToPage()
+    
+    doc=body_add_par(doc,"Break")%>%
+      body_add_flextable(Pairwise_Report)
+  }
+  doc
+}
+
+
+
