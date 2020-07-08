@@ -4,7 +4,7 @@
 \alias{report}
 \title{Creates a Report with t-tests for a Vector of Outcomes}
 \usage{
-report(df, Measures, Factor, paired = c("Yes", "No", "Try"))
+report(df, Measures, Factor, paired = c("Try", "Yes", "No"))
 }
 \arguments{
 \item{df}{Dataframe to use for the report}

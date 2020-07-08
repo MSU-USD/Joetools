@@ -2,7 +2,7 @@
 #'
 #' @param data The vector or dataset over which the standard error is calculated
 #'
-#' @return The calulated Standard Error
+#' @return The calculated Standard Error
 #' @importFrom stats sd
 #' @export
 #'
@@ -11,6 +11,24 @@
 #' se(x)
 se=function(data){
   return(sd(data, na.rm=T)/sqrt(sum(!is.na(data))))
+}
+
+#' Simplifying Reports
+#'
+#' @param input 
+#'
+#' @return Simplified interacton reports
+#' @import tidyverse
+#' @export
+#'
+#' @examples
+simplify <- function(input) {
+  x=match("Signif",colnames(input))+1
+  y=as.numeric(ncol(input))
+  df=input%>%
+    filter(!is.nan(Diff))%>%
+    mutate(across(x:y,~cut(.,breaks=c( 0,.001,.01,.05, .1,.999,1), labels=c("***" ,"**","*",".","NS","1" ))))%>%
+    select(1:x-1,where(~sum((.%in%c("***" ,"**","*",".")))>0))
 }
 
 #' Flexible Workbook Creation Function
@@ -108,8 +126,8 @@ report=function(df, Measures, Factor, paired=c("Try","Yes", "No")){
 #' Appends Interactions to a \code{\link[JoeTools:report]{report()}} Output Dataframe
 #'
 #' @param report The report dataframe that is being appended
-#' @param df The orginal dataframe used for the report
-#' @param Measures A vector of string names for the dependant variable. Order must be the same as the repor
+#' @param df The original dataframe used for the report
+#' @param Measures A vector of string names for the dependent variable. Order must be the same as the repor
 #' @param Factor A binary factor (as a string) which will be used for comparisons.  Must be 1 (Treatment) or 0 (No_Treatment)
 #' @param Interaction A factor column name (as a string) that will be used as an interacting independant variable.
 #'
@@ -118,21 +136,84 @@ report=function(df, Measures, Factor, paired=c("Try","Yes", "No")){
 #' @export
 #'
 #' @examples
-appendInteraction=function(report,df, Measures,Factor,Interaction){
+appendInteraction=function(report,df, Measures,Factor,Interaction, Simplify=T){
   p=NULL
-  reportpvaluecount=0
+  anova=NULL
+  aov_factors=as.vector(Interaction)
   for(i in Measures){
-    reportpvaluecount=reportpvaluecount+1
-    form=paste0(i, "~",Factor,"*",Interaction)
-    p[reportpvaluecount]=tryCatch(summary(aov(formula = as.formula(form), data=df))[[1]][["Pr(>F)"]][[3]], error=function(err) NA)
+    form=paste0(i, "~",Factor,"*",paste(aov_factors, collapse="*"))
+    anova[[i]]=NULL
+    if(!is.na(tryCatch(summary(aov(as.formula(form),data=df)), error=function(err) NA))){
+      
+    
+    anova[[i]]=summary(aov(as.formula(form),data=df))[[1]]%>%
+      rownames_to_column("Interactions")%>%
+      filter(grepl(paste0(Factor,":"), Interactions))%>%
+      mutate(Interactions=str_remove(Interactions,paste0(Factor,":")))%>%
+      mutate(Interactions=str_remove_all(Interactions, " "))%>%
+      select(Interactions,pvalue=`Pr(>F)` )%>%
+      pivot_wider(names_from = Interactions, values_from = "pvalue")%>%
+      mutate(Measure=i)
+    } 
   }
-  name=paste0(Interaction,"_pvalue")
-  name2=paste0(Interaction,"_Int")
-  output=report
-  output[[name]]=p
-  output=output%>%
-    mutate(NewP=ifelse(.data[[name]]<.001, "***",ifelse(.data[[name]]<.01, "**",
-                                                        ifelse(.data[[name]]<.05, "*", ifelse(.data[[name]]<.1, ".", "")))))%>%
-    rename(!!name2:=NewP)
+  anova=bind_rows(anova)
+  if(nrow(anova)>0){
+    output=report%>%
+    left_join(anova, by="Measure")
+    if(Simplify==T){
+      output=simplify(output)
+    }
+  } else  {
+    warning("Error in ANOVA, No comparison added.")
+    output=report
+  }
+}
+
+#' Plotting more than one plot together
+#'
+#' @param ... Name of each plot
+#' @param plotlist A vector with plot names
+#' @param file 
+#' @param cols How many columns of plots you want in your chart
+#' @param layout A matrix specifying the layout. If present, 'cols' is ignored.
+#'
+#' @return
+#' @import grid
+#' @export
+#'
+#' @examples
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  library(grid)
   
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  
+  if (numPlots==1) {
+    print(plots[[1]])
+    
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
+  }
 }

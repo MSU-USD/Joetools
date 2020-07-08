@@ -4,14 +4,14 @@
 \alias{appendInteraction}
 \title{Appends Interactions to a \code{\link[JoeTools:report]{report()}} Output Dataframe}
 \usage{
-appendInteraction(report, df, Measures, Factor, Interaction)
+appendInteraction(report, df, Measures, Factor, Interaction, Simplify = T)
 }
 \arguments{
 \item{report}{The report dataframe that is being appended}
 
-\item{df}{The orginal dataframe used for the report}
+\item{df}{The original dataframe used for the report}
 
-\item{Measures}{A vector of string names for the dependant variable. Order must be the same as the repor}
+\item{Measures}{A vector of string names for the dependent variable. Order must be the same as the repor}
 
 \item{Factor}{A binary factor (as a string) which will be used for comparisons.  Must be 1 (Treatment) or 0 (No_Treatment)}
 

@@ -10,7 +10,7 @@ se(data)
 \item{data}{The vector or dataset over which the standard error is calculated}
 }
 \value{
-The calulated Standard Error
+The calculated Standard Error
 }
 \description{
 Standard Error
