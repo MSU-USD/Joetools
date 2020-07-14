@@ -4,7 +4,7 @@
 \alias{wbsave}
 \title{Flexible Workbook Creation Function}
 \usage{
-wbsave(df, filename, sheetBy = NULL, keepNames = FALSE)
+wbsave(df, filename, sheetBy = NULL, keepNames = TRUE)
 }
 \arguments{
 \item{df}{The dataframe to be saved}

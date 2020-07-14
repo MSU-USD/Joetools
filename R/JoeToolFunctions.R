@@ -23,12 +23,12 @@ se=function(data){
 #'
 #' @examples
 simplifyAppend <- function(input) {
-  x=match("Signif",colnames(input))+1
-  y=as.numeric(ncol(input))
+  # x=match("Signif",colnames(input))+1
+  # y=as.numeric(ncol(input))
   df=input%>%
     filter(!is.nan(Diff))%>%
-    mutate(across(x:y,~cut(.,breaks=c( 0,.001,.01,.05, .1,.999,1), labels=c("***" ,"**","*",".","NS","1" ))))%>%
-    select(1:x-1,where(~sum((.%in%c("***" ,"**","*",".")))>0))
+    mutate(across(one_of(colnames(input)[match("Signif",colnames(input))+1])&where(is.numeric),~cut(.,breaks=c( 0,.001,.01,.05, .1,.999,1), labels=c("***" ,"**","*",".","NS","1" ))))%>%
+    select(1:Signif,where(~sum((.%in%c("***" ,"**","*",".")))>0))
 }
 
 #' Flexible Workbook Creation Function
@@ -51,7 +51,7 @@ simplifyAppend <- function(input) {
 #' data(iris)
 #' wbsave(iris, "Iris report.xlsx")
 #' wbsave(iris, "Iris report - by Species.xlsx", sheetBy="Species", keepNames=TRUE)
-wbsave=function(df,filename,sheetBy=NULL,keepNames=FALSE){
+wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE){
   if(keepNames==FALSE) {names(df)=str_to_sentence(names(df))}
   if(!is.null(sheetBy)) {sheetBy=str_to_sentence(sheetBy)}
   wb=createWorkbook()
@@ -157,7 +157,7 @@ appendInteraction=function(report,df, Measures,Factor,Interaction, Simplify=T){
     } 
   }
   anova=bind_rows(anova)
-  if(nrow(anova)>0){
+  if(nrow(anova)>0&(!is.null(anova))){
     output=report%>%
     left_join(anova, by="Measure")
     if(Simplify==T){
