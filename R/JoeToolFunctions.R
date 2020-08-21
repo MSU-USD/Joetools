@@ -27,7 +27,8 @@ simplifyAppend <- function(input) {
   # y=as.numeric(ncol(input))
   df=input%>%
     filter(!is.nan(Diff))%>%
-    mutate(across(one_of(colnames(input)[match("Signif",colnames(input))+1])&where(is.numeric),~cut(.,breaks=c( 0,.001,.01,.05, .1,.999,1), labels=c("***" ,"**","*",".","NS","1" ))))%>%
+    mutate(across(colnames(input)[match("Signif",colnames(input))+1]:colnames(input)[length(colnames(input))],
+                  ~cut(.,breaks=c( 0,.001,.01,.05, .1,.999,1), labels=c("***" ,"**","*",".","NS","1" ))))%>%
     select(1:Signif,where(~sum((.%in%c("***" ,"**","*",".")))>0))
 }
 
@@ -136,6 +137,7 @@ report=function(df, Measures, Factor, paired=c("Try","Yes", "No")){
 #' @export
 #'
 #' @examples
+
 appendInteraction=function(report,df, Measures,Factor,Interaction, Simplify=T){
   p=NULL
   anova=NULL
