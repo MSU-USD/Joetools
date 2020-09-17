@@ -12,4 +12,7 @@ RoxygenNote: 7.1.1
 Imports:
     lazyeval,
     tidyverse,
-    xlsx
+    openxlsx,
+    officer,
+    flextable,
+    grid

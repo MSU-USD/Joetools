@@ -15,7 +15,7 @@ se=function(data){
 
 #' Simplifying Reports
 #'
-#' @param input 
+#' @param input dataframe to simplify results from
 #'
 #' @return Simplified interacton reports
 #' @import tidyverse
@@ -41,40 +41,49 @@ simplifyAppend <- function(input) {
 #'
 #' @return Creates a Excel workbook from the supplied dataframe
 #' @import tidyverse
-#' @import xlsx
+#' @import openxlsx
 #' @import lazyeval
 #' @export
 #'
 #' @examples
 #' library(datasets)
 #' library(tidyverse)
-#' library(xlsx)
+#' library(openxlsx)
 #' data(iris)
 #' wbsave(iris, "Iris report.xlsx")
 #' wbsave(iris, "Iris report - by Species.xlsx", sheetBy="Species", keepNames=TRUE)
 wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE){
-  if(keepNames==FALSE) {names(df)=str_to_sentence(names(df))}
-  if(!is.null(sheetBy)) {sheetBy=str_to_sentence(sheetBy)}
+  if(keepNames==FALSE) {
+    names(df)=str_to_sentence(names(df))
+    if(!is.null(sheetBy)) {sheetBy=str_to_sentence(sheetBy)}
+  }
   wb=createWorkbook()
   df=as.data.frame(df)
-  TABLE_COLNAMES_STYLE <- CellStyle(wb)+ Font(wb,  heightInPoints=11, color="#44546A", isBold=TRUE)+
-    Border(color = "#8EA9DB", position = "BOTTOM", pen="BORDER_THICK")
-  sheetAll=createSheet(wb,sheetName = "All")
-  wbdata=NULL
+  
+  TABLE_COLNAMES_STYLE=createStyle(fontSize=11, fontColour ="#44546A", borderColour = "#8EA9DB",
+                                   borderStyle = "thick", border="bottom", textDecoration = c("BOLD"))
+  addWorksheet(wb,sheetName = "All")
+  writeData(wb, sheet = 1, df)
+  addStyle(wb, sheet = 1, style=TABLE_COLNAMES_STYLE, rows=1, cols=1:length(colnames(df)))
+  width_vec_header_all <- nchar(colnames(df))  + 2
+  width_vec_all <- apply(df, 2, function(x) max(nchar(as.character(x)) + ifelse(grepl("@",x),3,2), na.rm = TRUE)) 
+  max_vec_header_all <- pmax(width_vec_all, width_vec_header_all)
+  setColWidths(wb, sheet = 1, cols = 1:length(colnames(df)), widths = max_vec_header_all)
   wbAll=NULL
   if(!is.null(sheetBy)) {l=levels(as.factor(df[[sheetBy]]))}
   if(!is.null(sheetBy)) {for (i in l){
-    filter_criteria <- interp(~y == x, .values=list(y = as.name(sheetBy), x = i))
+    wbdata=NULL
     wbdata=df%>%
-      filter_(filter_criteria)
-    wbAll[[i]]=wbdata
-    sheet=createSheet(wb,sheetName = i)
-    addDataFrame(wbdata,sheet, colnamesStyle = TABLE_COLNAMES_STYLE)
-    autoSizeColumn(sheet, colIndex = 1:ncol(df)+1)
+      filter(!!as.symbol(sheetBy)==i)
+    addWorksheet(wb,sheetName = i)
+    writeData(wb, sheet = i, wbdata)
+    addStyle(wb, sheet = i, style=TABLE_COLNAMES_STYLE, rows=1, cols=1:length(colnames(wbdata)))
+    width_vec_header_i <- nchar(colnames(wbdata))  + 2
+    width_vec_i <- apply(wbdata, 2, function(x) max(nchar(as.character(x)) + ifelse(grepl("@",x),3,2), na.rm = TRUE)) 
+    max_vec_header_i <- pmax(width_vec_i, width_vec_header_i)
+    setColWidths(wb, sheet = i, cols = 1:length(colnames(wbdata)), widths = max_vec_header_i)
   }}
-  addDataFrame(df,sheetAll, colnamesStyle = TABLE_COLNAMES_STYLE)
-  autoSizeColumn(sheetAll, colIndex = 1:ncol(df)+1)
-  saveWorkbook(wb, filename)
+  saveWorkbook(wb, filename, overwrite=TRUE)
 }
 
 #' Creates a Report with t-tests for a Vector of Outcomes
@@ -131,6 +140,8 @@ report=function(df, Measures, Factor, paired=c("Try","Yes", "No")){
 #' @param Measures A vector of string names for the dependent variable. Order must be the same as the repor
 #' @param Factor A binary factor (as a string) which will be used for comparisons.  Must be 1 (Treatment) or 0 (No_Treatment)
 #' @param Interaction A factor column name (as a string) that will be used as an interacting independant variable.
+#' @param Simplify Removed uninteresting columns. On by devfault
+#'
 #'
 #' @return
 #' @import tidyverse
@@ -175,7 +186,6 @@ appendInteraction=function(report,df, Measures,Factor,Interaction, Simplify=T){
 #'
 #' @param ... Name of each plot
 #' @param plotlist A vector with plot names
-#' @param file 
 #' @param cols How many columns of plots you want in your chart
 #' @param layout A matrix specifying the layout. If present, 'cols' is ignored.
 #'
@@ -184,7 +194,7 @@ appendInteraction=function(report,df, Measures,Factor,Interaction, Simplify=T){
 #' @export
 #'
 #' @examples
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+multiplot <- function(..., plotlist=NULL, cols=1, layout=NULL) {
   library(grid)
   
   # Make a list from the ... arguments and plotlist
@@ -238,7 +248,57 @@ FitFlextableToPage <- function(ft, pgwidth = 6){
   return(ft_out)
 }
 
-
+#' Produce the Pairwise Comparisons on factors in a group
+#'
+#' @param df Dataframe with by subject Factor, Independent and Dependent Variable info
+#' @param Ind Column with the independant variable
+#' @param Dep Column with the dependant variable
+#' @param Factor Column over which to create comparisons
+#' @param Logit Allows for logistic regression if Logit=TRUE, off by default
+#'
+#' @return
+#' @import tidyverse
+#' @export
+#'
+#' @examples
+pairwise <- function(df, Ind, Dep, Factor, Logit=FALSE){
+  test=df%>%
+    # filter(if(Year!="All"){Cohort==Year} else {Cohort==Cohort})%>%
+    filter(!is.na(!!Dep))%>%
+    mutate_("Dependant"=Dep, "Independant"=Ind, "Levels"=Factor)%>%
+    group_by(Independant, Levels)%>%
+    summarize(Mean=mean(Dependant, na.rm=T),Count=n(), Measure=Dep, Dep_Values=list(Dependant))%>%
+    filter(Count>4)%>%
+    select(-Count)%>%
+    ungroup()%>%
+    mutate(Independant=ifelse(Independant==1,"Treatment","No_Treatment"))%>%
+    pivot_wider(names_from = Independant, values_from = c("Mean", "Dep_Values"))%>%
+    rename(No_Treatment=Mean_No_Treatment, Treatment=Mean_Treatment)%>%
+    filter(!is.na(No_Treatment)&!is.na(Treatment))%>%
+    mutate(Diff=Treatment-No_Treatment)%>%
+    group_by(Levels)
+  if(Logit==TRUE){
+    pvalue=test%>%
+      mutate(data=map2(Dep_Values_No_Treatment, Dep_Values_Treatment, 
+                       ~bind_rows(tibble(Independant=rep(1,length(.y)), Dependant=.y),tibble(Independant=rep(0,length(.x)), Dependant=.x))))%>%
+      mutate(p_value=map(data,~summary(glm(Dependant~Independant,family="binomial", data=.x))$coefficients[2,4]))%>%
+      select(-data)%>%
+      mutate(p_value=as.numeric(unlist(p_value)))
+  }else {
+    pvalue=test%>%
+      mutate(p_value=tryCatch({t.test(unlist(Dep_Values_No_Treatment), unlist(Dep_Values_Treatment))$p.value},
+                              error=function(e) {NA}))
+  }
+  output=pvalue%>%
+    select(-Dep_Values_No_Treatment,-Dep_Values_Treatment)%>%
+    mutate(Signif=ifelse(p_value<.001, "***",ifelse(p_value<.01, "**",
+                                                    ifelse(p_value<.05, "*", ifelse(p_value<.1, ".", "")))))%>%
+    mutate(Factor=Factor)%>%
+    mutate(Levels=as.character(Levels))%>%
+    # mutate(across(one_of("No_Treatment", "Treatment", "Diff"), ~percent(.,accuracy=.1)))%>%
+    relocate(Factor)
+  
+}
 
 #' Produce the Pairwise Comparisons found Significant in a Report
 #'
@@ -250,7 +310,7 @@ FitFlextableToPage <- function(ft, pgwidth = 6){
 #' @export
 #'
 #' @examples
-pairwise <- function(Report, Data) {
+pairwiseReport <- function(Report, Data) {
   Ind=colnames(Report)[match("Diff",colnames(Report))-1]
   w=match("Measure",colnames(Report))+0
   x=match("Signif", colnames(Report))+1

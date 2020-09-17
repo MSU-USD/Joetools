@@ -16,6 +16,8 @@ appendInteraction(report, df, Measures, Factor, Interaction, Simplify = T)
 \item{Factor}{A binary factor (as a string) which will be used for comparisons.  Must be 1 (Treatment) or 0 (No_Treatment)}
 
 \item{Interaction}{A factor column name (as a string) that will be used as an interacting independant variable.}
+
+\item{Simplify}{Removed uninteresting columns. On by devfault}
 }
 \value{
 

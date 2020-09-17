@@ -2,18 +2,24 @@
 % Please edit documentation in R/JoeToolFunctions.R
 \name{pairwise}
 \alias{pairwise}
-\title{Produce the Pairwise Comparisons found Significant in a Report}
+\title{Produce the Pairwise Comparisons on factors in a group}
 \usage{
-pairwise(Report, Data)
+pairwise(df, Ind, Dep, Factor, Logit = FALSE)
 }
 \arguments{
-\item{Report}{Report object output from Report/appendInteraction}
+\item{df}{Dataframe with by subject Factor, Independent and Dependent Variable info}
 
-\item{Data}{The original data used to make Report}
+\item{Ind}{Column with the independant variable}
+
+\item{Dep}{Column with the dependant variable}
+
+\item{Factor}{Column over which to create comparisons}
+
+\item{Logit}{Allows for logistic regression if Logit=TRUE, off by default}
 }
 \value{
 
 }
 \description{
-Produce the Pairwise Comparisons found Significant in a Report
+Produce the Pairwise Comparisons on factors in a group
 }

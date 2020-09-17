@@ -24,7 +24,7 @@ Flexible Workbook Creation Function
 \examples{
 library(datasets)
 library(tidyverse)
-library(xlsx)
+library(openxlsx)
 data(iris)
 wbsave(iris, "Iris report.xlsx")
 wbsave(iris, "Iris report - by Species.xlsx", sheetBy="Species", keepNames=TRUE)

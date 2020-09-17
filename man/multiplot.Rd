@@ -4,14 +4,12 @@
 \alias{multiplot}
 \title{Plotting more than one plot together}
 \usage{
-multiplot(..., plotlist = NULL, file, cols = 1, layout = NULL)
+multiplot(..., plotlist = NULL, cols = 1, layout = NULL)
 }
 \arguments{
 \item{...}{Name of each plot}
 
 \item{plotlist}{A vector with plot names}
-
-\item{file}{}
 
 \item{cols}{How many columns of plots you want in your chart}
 

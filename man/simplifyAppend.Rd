@@ -7,7 +7,7 @@
 simplifyAppend(input)
 }
 \arguments{
-\item{input}{}
+\item{input}{dataframe to simplify results from}
 }
 \value{
 Simplified interacton reports
