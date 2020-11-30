@@ -38,6 +38,7 @@ simplifyAppend <- function(input) {
 #' @param filename Name of the file, including the xlsx extension
 #' @param sheetBy Option to create sheets based on the values in a particular column of the dataframe
 #' @param keepNames The function automatically renames the column names with \code{\link[stringr:case]{stringr::str_to_sentence()}}. Setting this to TRUE will leave your column names unaltered
+#' @param overwrite Sets permissions for overwriting old files. Default is TRUE
 #'
 #' @return Creates a Excel workbook from the supplied dataframe
 #' @import tidyverse
@@ -52,7 +53,7 @@ simplifyAppend <- function(input) {
 #' data(iris)
 #' wbsave(iris, "Iris report.xlsx")
 #' wbsave(iris, "Iris report - by Species.xlsx", sheetBy="Species", keepNames=TRUE)
-wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE){
+wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=T){
   if(keepNames==FALSE) {
     names(df)=str_to_sentence(names(df))
     if(!is.null(sheetBy)) {sheetBy=str_to_sentence(sheetBy)}
@@ -83,7 +84,7 @@ wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE){
     max_vec_header_i <- pmax(width_vec_i, width_vec_header_i)
     setColWidths(wb, sheet = i, cols = 1:length(colnames(wbdata)), widths = max_vec_header_i)
   }}
-  saveWorkbook(wb, filename, overwrite=TRUE)
+  saveWorkbook(wb, filename, overwrite=overwrite)
 }
 
 #' Creates a Report with t-tests for a Vector of Outcomes

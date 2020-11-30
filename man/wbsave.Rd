@@ -4,7 +4,7 @@
 \alias{wbsave}
 \title{Flexible Workbook Creation Function}
 \usage{
-wbsave(df, filename, sheetBy = NULL, keepNames = TRUE)
+wbsave(df, filename, sheetBy = NULL, keepNames = TRUE, overwrite = T)
 }
 \arguments{
 \item{df}{The dataframe to be saved}
@@ -14,6 +14,8 @@ wbsave(df, filename, sheetBy = NULL, keepNames = TRUE)
 \item{sheetBy}{Option to create sheets based on the values in a particular column of the dataframe}
 
 \item{keepNames}{The function automatically renames the column names with \code{\link[stringr:case]{stringr::str_to_sentence()}}. Setting this to TRUE will leave your column names unaltered}
+
+\item{overwrite}{Sets permissions for overwriting old files. Default is TRUE}
 }
 \value{
 Creates a Excel workbook from the supplied dataframe
