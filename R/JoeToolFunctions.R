@@ -282,7 +282,8 @@ pairwise <- function(df, Ind, Dep, Factor, Logit=FALSE){
     pvalue=test%>%
       mutate(data=map2(Dep_Values_No_Treatment, Dep_Values_Treatment, 
                        ~bind_rows(tibble(Independant=rep(1,length(.y)), Dependant=.y),tibble(Independant=rep(0,length(.x)), Dependant=.x))))%>%
-      mutate(p_value=map(data,~summary(glm(Dependant~Independant,family="binomial", data=.x))$coefficients[2,4]))%>%
+      mutate(p_value=tryCatch({map(data,~summary(glm(Dependant~Independant,family="binomial", data=.x))$coefficients[2,4])},
+                              error=function(e) {NA}))%>%
       select(-data)%>%
       mutate(p_value=as.numeric(unlist(p_value)))
   }else {
