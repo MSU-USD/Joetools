@@ -269,7 +269,7 @@ pairwise <- function(df, Ind, Dep, Factor, Logit=FALSE){
     mutate_("Dependant"=Dep, "Independant"=Ind, "Levels"=Factor)%>%
     group_by(Independant, Levels)%>%
     summarize(Mean=mean(Dependant, na.rm=T),Count=n(), Measure=Dep, Dep_Values=list(Dependant))%>%
-    filter(Count>4)%>%
+    filter(Count>2)%>%
     select(-Count)%>%
     ungroup()%>%
     mutate(Independant=ifelse(Independant==1,"Treatment","No_Treatment"))%>%
@@ -278,7 +278,24 @@ pairwise <- function(df, Ind, Dep, Factor, Logit=FALSE){
     filter(!is.na(No_Treatment)&!is.na(Treatment))%>%
     mutate(Diff=Treatment-No_Treatment)%>%
     group_by(Levels)
-  if(Logit==TRUE){
+  if(nrow(test)==0){
+    pvalue=df%>%
+      # filter(if(Year!="All"){Cohort==Year} else {Cohort==Cohort})%>%
+      filter(!is.na(!!Dep))%>%
+      mutate_("Dependant"=Dep, "Independant"=Ind, "Levels"=Factor)%>%
+      group_by(Independant, Levels)%>%
+      summarize(Mean=mean(Dependant, na.rm=T), Measure=Dep, Dep_Values=list(Dependant))%>%
+      # filter(Count>2)%>%
+      # select(-Count)%>%
+      ungroup()%>%
+      mutate(Independant=ifelse(Independant==1,"Treatment","No_Treatment"))%>%
+      pivot_wider(names_from = Independant, values_from = c("Mean", "Dep_Values"))%>%
+      rename(No_Treatment=Mean_No_Treatment, Treatment=Mean_Treatment)%>%
+      filter(!is.na(No_Treatment)&!is.na(Treatment))%>%
+      mutate(Diff=Treatment-No_Treatment)%>%
+      group_by(Levels)%>%
+      mutate(p_value=NA)
+  }else if(Logit==TRUE){
     pvalue=test%>%
       mutate(data=map2(Dep_Values_No_Treatment, Dep_Values_Treatment, 
                        ~bind_rows(tibble(Independant=rep(1,length(.y)), Dependant=.y),tibble(Independant=rep(0,length(.x)), Dependant=.x))))%>%
