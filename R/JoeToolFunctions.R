@@ -182,58 +182,11 @@ appendInteraction=function(report,df, Measures,Factor,Interaction, Simplify=T){
   }
 }
 
-#' Plotting more than one plot together
-#'
-#' @param ... Name of each plot
-#' @param plotlist A vector with plot names
-#' @param cols How many columns of plots you want in your chart
-#' @param layout A matrix specifying the layout. If present, 'cols' is ignored.
-#'
-#' @return
-#' @import grid
-#' @export
-#'
-#' @examples
-multiplot <- function(..., plotlist=NULL, cols=1, layout=NULL) {
-  library(grid)
-  
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-  
-  numPlots = length(plots)
-  
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                     ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-  
-  if (numPlots==1) {
-    print(plots[[1]])
-    
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-    
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-      
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
 
 #' Force Flextable to Page
 #'
 #' @param ft Flextable object
-#' @param pgwidth Customizable page width setting
+#' @param pgwidth Customization page width setting
 #'
 #' @return
 #' @import flextable
@@ -519,7 +472,7 @@ SISTable=function(TABLENAME){
 #' @return
 #' @import tidyverse
 #' @import dbplyr
-#' @export
+#' @export 
 #'
 #' @examples
 edwFinance=function(TableName, DB=EDW){

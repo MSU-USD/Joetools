@@ -9,7 +9,7 @@ FitFlextableToPage(ft, pgwidth = 6)
 \arguments{
 \item{ft}{Flextable object}
 
-\item{pgwidth}{Customizable page width setting}
+\item{pgwidth}{Customization page width setting}
 }
 \value{
 
