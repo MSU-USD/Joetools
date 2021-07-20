@@ -43,7 +43,6 @@ simplifyAppend <- function(input) {
 #' @return Creates a Excel workbook from the supplied dataframe
 #' @import tidyverse
 #' @import openxlsx
-#' @import lazyeval
 #' @export
 #'
 #' @examples
@@ -386,6 +385,9 @@ pairwiseReport <- function(Report, Data) {
 }
 
 
+
+
+
 #' Creates a document including the Report and Pairwise comparisons produced above
 #'
 #' @param Report The report output by report/appendInteraction
@@ -481,5 +483,45 @@ document <- function(Report, Pairwise, measureNames, factorNames, percentOutcome
   doc
 }
 
+#' Simplifies Campus Solutions Table Calls
+#'
+#' @param TABLENAME Name of the table. Converted automatically to UPPERCASE
+#'
+#' @return
+#' @import tidyverse
+#' @import dbplyr
+#' @export
+#'
+#' @examples
+CSTable=function(TABLENAME){
+  output=tbl(CS, in_schema("SISCS",str_to_upper(TABLENAME)))
+}
 
+#' Simplifies SIS Table Calls
+#'
+#' @param TABLENAME Name of the table. Converted automatically to UPPERCASE
+#'
+#' @return
+#' @import tidyverse
+#' @import dbplyr
+#' @export
+#'
+#' @examples
+SISTable=function(TABLENAME){
+  output=tbl(SIS, str_to_upper(TABLENAME))
+}
 
+#' Pulling Finance EDW Tables
+#'
+#' @param TableName String. Name of the Table to be pulled. 
+#' @param DB Reference to the connection. Defaults to EDW
+#'
+#' @return
+#' @import tidyverse
+#' @import dbplyr
+#' @export
+#'
+#' @examples
+edwFinance=function(TableName, DB=EDW){
+  output=tbl(DB, in_schema("FINANCE",str_to_upper(TableName)))
+}
