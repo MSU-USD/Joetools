@@ -39,6 +39,11 @@ simplifyAppend <- function(input) {
 #' @param sheetBy Option to create sheets based on the values in a particular column of the dataframe
 #' @param keepNames The function automatically renames the column names with \code{\link[stringr:case]{stringr::str_to_sentence()}}. Setting this to TRUE will leave your column names unaltered
 #' @param overwrite Sets permissions for overwriting old files. Default is TRUE
+#' @param IncludeAll Include a tab with the complete data
+#' @param AllFirst  Places the all tab at the beginning of the tabs. If FALSE, placed at end. Only fucntions when IncludeAll==TRUE
+#' @param AllName Allows the All Data tab to be renamed.
+#' @param dollarCols  Vector of strings specifying the columns to save as ACCOUNTING datatypes in Excel
+#' @param percentCols Vector of strings specifying the columns to save as PERCENTAGE datatypes in Excel 
 #'
 #' @return Creates a Excel workbook from the supplied dataframe
 #' @import tidyverse
@@ -46,43 +51,65 @@ simplifyAppend <- function(input) {
 #' @export
 #'
 #' @examples
-#' library(datasets)
-#' library(tidyverse)
-#' library(openxlsx)
-#' data(iris)
-#' wbsave(iris, "Iris report.xlsx")
-#' wbsave(iris, "Iris report - by Species.xlsx", sheetBy="Species", keepNames=TRUE)
-wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=T){
+wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=TRUE,
+                IncludeAll=TRUE,AllFirst=TRUE, AllName="All",
+                dollarCols=NULL, percentCols=NULL){
   if(keepNames==FALSE) {
     names(df)=str_to_sentence(names(df))
     if(!is.null(sheetBy)) {sheetBy=str_to_sentence(sheetBy)}
   }
+  
+  cleanSheet=function(wb,df,sheet, 
+                      dollarColsSheet=dollarCols, percentColsSheet=percentCols){
+    TABLE_COLNAMES_STYLE=createStyle(fontSize=11, fontColour ="#44546A", borderColour = "#8EA9DB",
+                                     borderStyle = "thick", border="bottom", textDecoration = c("BOLD"))
+  
+    #dollar formatting
+    DollarStyle <- createStyle(numFmt ="ACCOUNTING" )#"$ #,##0"
+    dollarColNums<-as.numeric(pmatch(dollarCols,colnames(df)))
+    addStyle(wb, sheet = sheet, style=DollarStyle, rows=2:(nrow(df)+1), cols=dollarColNums, gridExpand = T)
+
+    #percent formatting
+    PercentStyle <- createStyle(numFmt = "0.0%")
+    percentColNums<-as.numeric(pmatch(percentCols,colnames(df)))
+    addStyle(wb, sheet = sheet, style=PercentStyle, rows=2:(nrow(df)+1), cols=percentColNums, gridExpand = T)
+    
+    #column widths
+    addStyle(wb, sheet = sheet, style=TABLE_COLNAMES_STYLE, rows=1, cols=1:length(colnames(df)))
+    width_vec_header_all <- nchar(colnames(df))  + 2
+    width_vec_all_text <- apply(df, 2, function(x) max(nchar(as.character(x)) + ifelse(grepl("@",x),3,2), na.rm = TRUE))
+    col_width_adjust=map_dbl(colnames(df),~ifelse(.%in%dollarCols,2,
+                                                  ifelse(.%in%percentCols,1,0)))
+    width_vec_all=width_vec_all_text+col_width_adjust
+    max_vec_header_all <- pmax(width_vec_all, width_vec_header_all)
+    setColWidths(wb, sheet = sheet, cols = 1:length(colnames(df)), widths = max_vec_header_all)
+  }
+  
+  addAll=function(wb, df, AllName){
+    addWorksheet(wb,sheetName = AllName)
+    writeData(wb, sheet = AllName, df)
+    cleanSheet(wb,df,AllName)
+  }
+  
   wb=createWorkbook()
   df=as.data.frame(df)
   
-  TABLE_COLNAMES_STYLE=createStyle(fontSize=11, fontColour ="#44546A", borderColour = "#8EA9DB",
-                                   borderStyle = "thick", border="bottom", textDecoration = c("BOLD"))
-  addWorksheet(wb,sheetName = "All")
-  writeData(wb, sheet = 1, df)
-  addStyle(wb, sheet = 1, style=TABLE_COLNAMES_STYLE, rows=1, cols=1:length(colnames(df)))
-  width_vec_header_all <- nchar(colnames(df))  + 2
-  width_vec_all <- apply(df, 2, function(x) max(nchar(as.character(x)) + ifelse(grepl("@",x),3,2), na.rm = TRUE)) 
-  max_vec_header_all <- pmax(width_vec_all, width_vec_header_all)
-  setColWidths(wb, sheet = 1, cols = 1:length(colnames(df)), widths = max_vec_header_all)
-  wbAll=NULL
+  if(IncludeAll==TRUE&AllFirst==TRUE) {addAll(wb,df,AllName)}
+  
   if(!is.null(sheetBy)) {l=levels(as.factor(df[[sheetBy]]))}
-  if(!is.null(sheetBy)) {for (i in l){
-    wbdata=NULL
-    wbdata=df%>%
-      filter(!!as.symbol(sheetBy)==i)
-    addWorksheet(wb,sheetName = i)
-    writeData(wb, sheet = i, wbdata)
-    addStyle(wb, sheet = i, style=TABLE_COLNAMES_STYLE, rows=1, cols=1:length(colnames(wbdata)))
-    width_vec_header_i <- nchar(colnames(wbdata))  + 2
-    width_vec_i <- apply(wbdata, 2, function(x) max(nchar(as.character(x)) + ifelse(grepl("@",x),3,2), na.rm = TRUE)) 
-    max_vec_header_i <- pmax(width_vec_i, width_vec_header_i)
-    setColWidths(wb, sheet = i, cols = 1:length(colnames(wbdata)), widths = max_vec_header_i)
-  }}
+  if(!is.null(sheetBy)) {
+    for (i in l){
+      wbdata=NULL
+      wbdata=df%>%
+        filter(!!as.symbol(sheetBy)==i)
+      addWorksheet(wb,sheetName = i)
+      writeData(wb, sheet = i, wbdata)
+      cleanSheet(wb,wbdata,sheet=i)
+    }
+  }
+  
+  if(IncludeAll==TRUE&AllFirst==FALSE) {addAll(wb,df,AllName)}
+  
   saveWorkbook(wb, filename, overwrite=overwrite)
 }
 
