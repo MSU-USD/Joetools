@@ -43,7 +43,11 @@ simplifyAppend <- function(input) {
 #' @param AllFirst  Places the all tab at the beginning of the tabs. If FALSE, placed at end. Only fucntions when IncludeAll==TRUE
 #' @param AllName Allows the All Data tab to be renamed.
 #' @param dollarCols  Vector of strings specifying the columns to save as ACCOUNTING datatypes in Excel
-#' @param percentCols Vector of strings specifying the columns to save as PERCENTAGE datatypes in Excel 
+#' @param percentCols Vector of strings specifying the columns to save as PERCENTAGE datatypes in Excel
+#' @param condCols Vector of strings specifying the columns to apply conditional coloring to in Excel
+#' @param condColors Vector of length 2 or 3 that defines the colors used in conditional formatting
+#' @param lowBad When TRUE (default), colors low values the first color in the vector (Red by default), if false, inverts the vector
+#' @param rule Allows specification of the conditional color numeric range. Defaults to min/max of column 
 #'
 #' @return Creates a Excel workbook from the supplied dataframe
 #' @import tidyverse
@@ -53,26 +57,37 @@ simplifyAppend <- function(input) {
 #' @examples
 wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=TRUE,
                 IncludeAll=TRUE,AllFirst=TRUE, AllName="All",
-                dollarCols=NULL, percentCols=NULL){
+                dollarCols=NULL, percentCols=NULL,
+                condCols=NULL, condColors=c("#F8696B","#FFEB84","#63BE7B"), 
+                lowBad=TRUE, rule=NULL
+){
   if(keepNames==FALSE) {
     names(df)=str_to_sentence(names(df))
     if(!is.null(sheetBy)) {sheetBy=str_to_sentence(sheetBy)}
   }
   
-  cleanSheet=function(wb,df,sheet, 
-                      dollarColsSheet=dollarCols, percentColsSheet=percentCols){
+  cleanSheet=function(wb,df,sheet){
+    
     TABLE_COLNAMES_STYLE=createStyle(fontSize=11, fontColour ="#44546A", borderColour = "#8EA9DB",
                                      borderStyle = "thick", border="bottom", textDecoration = c("BOLD"))
-  
+    
     #dollar formatting
     DollarStyle <- createStyle(numFmt ="ACCOUNTING" )#"$ #,##0"
     dollarColNums<-as.numeric(pmatch(dollarCols,colnames(df)))
     addStyle(wb, sheet = sheet, style=DollarStyle, rows=2:(nrow(df)+1), cols=dollarColNums, gridExpand = T)
-
+    
     #percent formatting
     PercentStyle <- createStyle(numFmt = "0.0%")
     percentColNums<-as.numeric(pmatch(percentCols,colnames(df)))
     addStyle(wb, sheet = sheet, style=PercentStyle, rows=2:(nrow(df)+1), cols=percentColNums, gridExpand = T)
+    
+    #conditional formatting
+    if(lowBad==FALSE) {condColors=rev(condColors)}
+    condColNums<-as.numeric(pmatch(condCols,colnames(df)))
+    for (j in condColNums) {
+      conditionalFormatting(wb, sheet = sheet, rows=2:(nrow(df)+1), cols=j,style=condColors, type='colourScale')
+    }
+    
     
     #column widths
     addStyle(wb, sheet = sheet, style=TABLE_COLNAMES_STYLE, rows=1, cols=1:length(colnames(df)))
@@ -112,7 +127,6 @@ wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=TRUE,
   
   saveWorkbook(wb, filename, overwrite=overwrite)
 }
-
 #' Creates a Report with t-tests for a Vector of Outcomes
 #'
 #' @param df Dataframe to use for the report
