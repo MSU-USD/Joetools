@@ -74,12 +74,16 @@ wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=TRUE,
     #dollar formatting
     DollarStyle <- createStyle(numFmt ="ACCOUNTING" )#"$ #,##0"
     dollarColNums<-as.numeric(pmatch(dollarCols,colnames(df)))
-    addStyle(wb, sheet = sheet, style=DollarStyle, rows=2:(nrow(df)+1), cols=dollarColNums, gridExpand = T)
+    for (j in dollarColNums) {
+      addStyle(wb, sheet = sheet, style=DollarStyle, rows=2:(nrow(df)+1), cols=j, gridExpand = T)
+    }
     
     #percent formatting
     PercentStyle <- createStyle(numFmt = "0.0%")
     percentColNums<-as.numeric(pmatch(percentCols,colnames(df)))
-    addStyle(wb, sheet = sheet, style=PercentStyle, rows=2:(nrow(df)+1), cols=percentColNums, gridExpand = T)
+    for (j in percentColNums) {
+      addStyle(wb, sheet = sheet, style=PercentStyle, rows=2:(nrow(df)+1), cols=j, gridExpand = T)
+    }
     
     #conditional formatting
     if(lowBad==FALSE) {condColors=rev(condColors)}
@@ -124,6 +128,93 @@ wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=TRUE,
   }
   
   if(IncludeAll==TRUE&AllFirst==FALSE) {addAll(wb,df,AllName)}
+  
+  saveWorkbook(wb, filename, overwrite=overwrite)
+}
+
+
+#' Flexible Workbook Creation Function
+#'
+#' @param filename Name of the resulting .xlsx file
+#' @param ... List of dataframes to have as sheets
+#' @param sheetNames List of sheet names in order of the ... argument. If left NULL (default), then the dataframe object names will be used as sheet names.
+#' @param keepNames The function automatically renames the column names with \code{\link[stringr:case]{stringr::str_to_sentence()}}. Setting this to TRUE will leave your column names unaltered
+#' @param overwrite Sets permissions for overwriting old files. Default is TRUE
+#' @param dollarCols  Vector of strings specifying the columns to save as ACCOUNTING datatypes in Excel
+#' @param percentCols Vector of strings specifying the columns to save as PERCENTAGE datatypes in Excel
+#' @param condCols Vector of strings specifying the columns to apply conditional coloring to in Excel
+#' @param condColors Vector of length 2 or 3 that defines the colors used in conditional formatting
+#' @param lowBad When TRUE (default), colors low values the first color in the vector (Red by default), if false, inverts the vector
+#' @param rule Allows specification of the conditional color numeric range. Defaults to min/max of column 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+wbsave2=function(filename,...,
+                 sheetNames=NULL,
+                 keepNames=TRUE, overwrite=TRUE,
+                 dollarCols=NULL, percentCols=NULL,
+                 condCols=NULL, condColors=c("#F8696B","#FFEB84","#63BE7B"), 
+                 lowBad=TRUE, rule=NULL){
+  
+  cleanSheet=function(wb,df,sheet){
+    TABLE_COLNAMES_STYLE=createStyle(fontSize=11, fontColour ="#44546A", borderColour = "#8EA9DB",
+                                     borderStyle = "thick", border="bottom", textDecoration = c("BOLD"))
+    
+    #dollar formatting
+    DollarStyle <- createStyle(numFmt ="ACCOUNTING" )#"$ #,##0"
+    dollarColNums<-as.numeric(pmatch(dollarCols,colnames(df)))
+    for (j in dollarColNums) {
+      addStyle(wb, sheet = sheet, style=DollarStyle, rows=2:(nrow(df)+1), cols=j, gridExpand = T)
+    }
+    
+    #percent formatting
+    PercentStyle <- createStyle(numFmt = "0.0%")
+    percentColNums<-as.numeric(pmatch(percentCols,colnames(df)))
+    for (j in percentColNums) {
+      addStyle(wb, sheet = sheet, style=PercentStyle, rows=2:(nrow(df)+1), cols=j, gridExpand = T)
+    }
+    
+    #conditional formatting
+    if(lowBad==FALSE) {condColors=rev(condColors)}
+    condColNums<-as.numeric(pmatch(condCols,colnames(df)))
+    for (j in condColNums) {
+      conditionalFormatting(wb, sheet = sheet, rows=2:(nrow(df)+1), cols=j,style=condColors, type='colourScale')
+    }
+    
+    #column widths
+    addStyle(wb, sheet = sheet, style=TABLE_COLNAMES_STYLE, rows=1, cols=1:length(colnames(df)))
+    width_vec_header_all <- nchar(colnames(df))  + 2
+    width_vec_all_text <- apply(df, 2, function(x) max(nchar(as.character(x)) + ifelse(grepl("@",x),3,2), na.rm = TRUE))
+    col_width_adjust=map_dbl(colnames(df),~ifelse(.%in%dollarCols,2,
+                                                  ifelse(.%in%percentCols,1,0)))
+    width_vec_all=width_vec_all_text+col_width_adjust
+    max_vec_header_all <- pmax(width_vec_all, width_vec_header_all)
+    setColWidths(wb, sheet = sheet, cols = 1:length(colnames(df)), widths = max_vec_header_all)
+  }
+  
+  wb=createWorkbook()
+  
+  dots <- list2(...)
+  
+  if(is.null(sheetNames)){
+    # args_as_char_vector =
+    sheetNames= sapply(substitute(list(...)),deparse)[-1]
+  }
+  
+  for (i in seq_along(dots)) {
+    wbdata=NULL
+    wbsheetName=NULL
+    
+    wbdata=dots[[i]]
+    wbdata=as.data.frame(wbdata)
+    
+    wbsheetName=str_replace_all(sheetNames[i],"_"," ")
+    addWorksheet(wb,sheetName = wbsheetName)
+    writeData(wb, sheet = wbsheetName, wbdata)
+    cleanSheet(wb,wbdata,sheet = wbsheetName)
+  }
   
   saveWorkbook(wb, filename, overwrite=overwrite)
 }
