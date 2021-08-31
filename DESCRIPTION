@@ -16,4 +16,5 @@ Imports:
     officer,
     flextable,
     grid,
-    dbplyr
+    dbplyr,
+    rlang

@@ -147,7 +147,10 @@ wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=TRUE,
 #' @param lowBad When TRUE (default), colors low values the first color in the vector (Red by default), if false, inverts the vector
 #' @param rule Allows specification of the conditional color numeric range. Defaults to min/max of column 
 #'
-#' @return
+#' @return Creates a Excel workbook from the supplied dataframe
+#' @import openxlsx
+#' @import tidyverse
+#' @import rlang
 #' @export
 #'
 #' @examples
@@ -218,6 +221,7 @@ wbsave2=function(filename,...,
   
   saveWorkbook(wb, filename, overwrite=overwrite)
 }
+
 #' Creates a Report with t-tests for a Vector of Outcomes
 #'
 #' @param df Dataframe to use for the report
