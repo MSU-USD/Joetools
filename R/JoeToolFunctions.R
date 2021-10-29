@@ -100,7 +100,8 @@ wbsave=function(df,filename,sheetBy=NULL,keepNames=TRUE, overwrite=TRUE,
     col_width_adjust=map_dbl(colnames(df),~ifelse(.%in%dollarCols,2,
                                                   ifelse(.%in%percentCols,1,0)))
     width_vec_all=width_vec_all_text+col_width_adjust
-    max_vec_header_all <- pmax(width_vec_all, width_vec_header_all)
+    max_vec_header_all <- pmin(pmax(width_vec_all, width_vec_header_all),75)
+    # colwidth=min(max_vec_header_all,100)
     setColWidths(wb, sheet = sheet, cols = 1:length(colnames(df)), widths = max_vec_header_all)
   }
   
@@ -193,7 +194,7 @@ wbsave2=function(filename,...,
     col_width_adjust=map_dbl(colnames(df),~ifelse(.%in%dollarCols,2,
                                                   ifelse(.%in%percentCols,1,0)))
     width_vec_all=width_vec_all_text+col_width_adjust
-    max_vec_header_all <- pmax(width_vec_all, width_vec_header_all)
+    max_vec_header_all <- pmin(pmax(width_vec_all, width_vec_header_all),75)
     setColWidths(wb, sheet = sheet, cols = 1:length(colnames(df)), widths = max_vec_header_all)
   }
   
